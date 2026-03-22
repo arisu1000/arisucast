@@ -89,17 +89,19 @@ EpisodeListScreen → 에피소드 탭
     │
     ▼
 EpisodeListViewModel.playEpisode(episode)
-    │ 로컬 파일 있으면 localFilePath 우선, 없으면 audioUrl
+    │ podcastTitle 포함
     ▼
-PlaybackRepository.playEpisode(episodeId, url, title, artwork, startPosition)
-    │ EpisodeDao에서 저장된 재생 위치 로드
+PlaybackRepository.playEpisode(episode, podcastTitle)
+    │ MediaItem에 제목/아티스트/아트워크 메타데이터 설정
+    │ → 알림 컨트롤에 표시됨
     ▼
 ExoPlayer.setMediaItem() → prepare() → seekTo() → play()
     │
     ▼
-PlaybackState 업데이트 (StateFlow)
-    ├─ MainViewModel.playbackState → AnimatedMiniPlayer
-    └─ PlayerViewModel.uiState → PlayerScreen
+PlaybackState 업데이트 (StateFlow, currentPodcastTitle 포함)
+    ├─ MainViewModel.playbackState → AnimatedMiniPlayer (podcastTitle 표시)
+    ├─ PlayerViewModel.uiState → PlayerScreen
+    └─ MediaSession → 알림/잠금 화면 컨트롤
 ```
 
 ---
@@ -230,7 +232,7 @@ val player: ExoPlayer = mockk(relaxed = true)
 // PlaybackRepository 사용 시 반드시 Main 디스패처 설정
 @Before fun setUp() {
     Dispatchers.setMain(UnconfinedTestDispatcher())
-    repository = PlaybackRepository(player, episodeDao)
+    repository = PlaybackRepository(context, player, episodeDao)
 }
 ```
 

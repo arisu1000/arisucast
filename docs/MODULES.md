@@ -5,7 +5,7 @@
 ```
 app/
 ├── ArisuCastApplication.kt          @HiltAndroidApp, WorkManager 설정, RefreshFeedsWorker 등록
-├── MainActivity.kt                  @AndroidEntryPoint, 다크 테마 적용, ArisuCastApp() 호출
+├── MainActivity.kt                  @AndroidEntryPoint, 다크 테마 적용, 알림 권한 요청, ArisuCastApp() 호출
 ├── navigation/
 │   ├── AppDestination.kt            sealed class (Home/Search/Library/Settings) + AppRoutes
 │   └── AppNavHost.kt                NavHost, 딥링크 (arisucast://subscribe?url=...) 처리
@@ -22,7 +22,7 @@ core-common/
 ├── model/
 │   ├── Podcast.kt                   도메인 모델
 │   ├── Episode.kt                   도메인 모델 (DownloadState sealed class 포함)
-│   └── PlaybackState.kt             isPlaying, positionMs, sleepTimerEndMs, ...
+│   └── PlaybackState.kt             isPlaying, positionMs, sleepTimerEndMs, currentPodcastTitle, ...
 ├── result/
 │   └── Result.kt                    sealed class Success/Error/Loading, runCatchingResult
 ├── dispatcher/
@@ -76,7 +76,7 @@ core-media/
 ├── PlaybackRepository.kt            @Singleton, ExoPlayer 래핑, StateFlow<PlaybackState>
 │                                    1초마다 위치 저장, 슬립 타이머
 ├── service/
-│   └── PlaybackService.kt           MediaSessionService (잠금 화면/알림 컨트롤)
+│   └── PlaybackService.kt           MediaSessionService (알림 컨트롤, setSessionActivity, onTaskRemoved)
 └── di/
     └── MediaModule.kt               @Provides ExoPlayer (팟캐스트 오디오 속성 설정)
 ```

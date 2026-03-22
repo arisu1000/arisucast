@@ -50,14 +50,8 @@ class EpisodeListViewModel @Inject constructor(
     )
 
     fun playEpisode(episode: Episode) {
-        playbackRepository.playEpisode(
-            episodeId = episode.id,
-            audioUrl = (episode.downloadState as? DownloadState.Downloaded)?.localFilePath
-                ?: episode.audioUrl,
-            title = episode.title,
-            artworkUrl = episode.imageUrl,
-            startPositionMs = episode.playbackPositionMs
-        )
+        val podcastTitle = (uiState.value as? EpisodeListUiState.Success)?.podcastTitle ?: ""
+        playbackRepository.playEpisode(episode, podcastTitle)
     }
 
     fun toggleDownload(episode: Episode) {

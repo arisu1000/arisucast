@@ -2,6 +2,7 @@ package com.arisucast.core.common.model
 
 data class PlaybackState(
     val currentEpisode: Episode? = null,
+    val currentPodcastTitle: String? = null,
     val isPlaying: Boolean = false,
     val positionMs: Long = 0L,
     val durationMs: Long = 0L,

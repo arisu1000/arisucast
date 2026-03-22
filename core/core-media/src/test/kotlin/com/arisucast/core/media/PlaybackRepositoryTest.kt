@@ -1,5 +1,6 @@
 package com.arisucast.core.media
 
+import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.arisucast.core.database.dao.EpisodeDao
 import io.mockk.every
@@ -22,6 +23,7 @@ class PlaybackRepositoryTest {
 
     private val testDispatcher = UnconfinedTestDispatcher()
 
+    private val context: Context = mockk(relaxed = true)
     private val player: ExoPlayer = mockk(relaxed = true)
     private val episodeDao: EpisodeDao = mockk(relaxed = true)
     private lateinit var repository: PlaybackRepository
@@ -29,8 +31,9 @@ class PlaybackRepositoryTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        repository = PlaybackRepository(player, episodeDao)
+        repository = PlaybackRepository(context, player, episodeDao)
     }
+
 
     @After
     fun tearDown() {

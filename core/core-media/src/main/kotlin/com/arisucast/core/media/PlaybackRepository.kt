@@ -1,12 +1,18 @@
 package com.arisucast.core.media
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.arisucast.core.common.model.Episode
 import com.arisucast.core.common.model.PlayerState
 import com.arisucast.core.common.model.PlaybackState
 import com.arisucast.core.database.dao.EpisodeDao
+import com.arisucast.core.media.service.PlaybackService
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -23,6 +29,7 @@ import javax.inject.Singleton
 
 @Singleton
 class PlaybackRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val player: ExoPlayer,
     private val episodeDao: EpisodeDao
 ) {
@@ -56,32 +63,51 @@ class PlaybackRepository @Inject constructor(
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
-                _state.update {
-                    it.copy(
-                        durationMs = 0L,
-                        positionMs = 0L,
-                        bufferedPositionMs = 0L
-                    )
+                if (mediaItem == null) {
+                    _state.update {
+                        it.copy(
+                            currentEpisode = null,
+                            currentPodcastTitle = null,
+                            durationMs = 0L,
+                            positionMs = 0L,
+                            bufferedPositionMs = 0L
+                        )
+                    }
                 }
             }
         })
     }
 
-    fun playEpisode(episodeId: String, audioUrl: String, title: String, artworkUrl: String, startPositionMs: Long = 0L) {
+    fun playEpisode(episode: Episode, podcastTitle: String) {
+        // Start PlaybackService so the system shows a media notification
+        val serviceIntent = Intent(context, PlaybackService::class.java)
+        ContextCompat.startForegroundService(context, serviceIntent)
+
+        val audioUrl = (episode.downloadState as? com.arisucast.core.common.model.DownloadState.Downloaded)?.localFilePath
+            ?: episode.audioUrl
+
         val mediaItem = MediaItem.Builder()
-            .setMediaId(episodeId)
+            .setMediaId(episode.id)
             .setUri(audioUrl)
             .setMediaMetadata(
                 MediaMetadata.Builder()
-                    .setTitle(title)
-                    .setArtworkUri(android.net.Uri.parse(artworkUrl))
+                    .setTitle(episode.title)
+                    .setArtist(podcastTitle)
+                    .setArtworkUri(android.net.Uri.parse(episode.imageUrl))
                     .build()
             )
             .build()
 
+        _state.update { 
+            it.copy(
+                currentEpisode = episode,
+                currentPodcastTitle = podcastTitle
+            )
+        }
+
         player.setMediaItem(mediaItem)
         player.prepare()
-        if (startPositionMs > 0) player.seekTo(startPositionMs)
+        if (episode.playbackPositionMs > 0) player.seekTo(episode.playbackPositionMs)
         player.play()
     }
 

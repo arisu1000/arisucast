@@ -1,5 +1,7 @@
 package com.arisucast.core.media.service
 
+import android.app.PendingIntent
+import android.content.Intent
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -20,11 +22,34 @@ class PlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
-        mediaSession = MediaSession.Builder(this, player).build()
+        
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        mediaSession = MediaSession.Builder(this, player)
+            .setSessionActivity(pendingIntent)
+            .build()
+
+        addSession(mediaSession!!)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? =
         mediaSession
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        val player = mediaSession?.player
+        if (player == null || !player.playWhenReady || player.mediaItemCount == 0) {
+            stopSelf()
+        }
+    }
 
     override fun onDestroy() {
         mediaSession?.run {

@@ -58,7 +58,8 @@ RSS / iTunes API
 data class Podcast(val id: String, val title: String, val feedUrl: String, ...)
 data class Episode(val id: String, val podcastId: String, val audioUrl: String, ...)
 data class PlaybackState(val currentEpisode: Episode?, val isPlaying: Boolean,
-                         val positionMs: Long, val sleepTimerEndMs: Long, ...)
+                         val positionMs: Long, val sleepTimerEndMs: Long,
+                         val currentPodcastTitle: String?, ...)
 
 // 결과 타입
 sealed class Result<T> { class Success<T>(val data: T), class Error(...), object Loading }
@@ -104,10 +105,10 @@ interface ItunesSearchApi {
 
 ```kotlin
 @Singleton
-class PlaybackRepository(player: ExoPlayer, episodeDao: EpisodeDao) {
+class PlaybackRepository(context: Context, player: ExoPlayer, episodeDao: EpisodeDao) {
     val state: StateFlow<PlaybackState>
 
-    fun playEpisode(episodeId, audioUrl, title, artworkUrl, startPositionMs)
+    fun playEpisode(episode: Episode, podcastTitle: String)  // MediaItem 메타데이터 포함
     fun playPause()
     fun seekToFraction(fraction: Float)
     fun skipBack(ms: Long = 10_000L)
@@ -118,7 +119,11 @@ class PlaybackRepository(player: ExoPlayer, episodeDao: EpisodeDao) {
 ```
 
 - 재생 중 1초마다 Room에 위치 저장 (`EpisodeDao.updatePlaybackPosition`)
-- `MediaSessionService` → 잠금 화면/알림 컨트롤 지원
+- `MediaItem.MediaMetadata`에 제목, 아티스트(팟캐스트명), 아트워크 URI 설정 → 알림에 표시
+- `MediaSessionService`를 통해 알림 액션 및 기본 컨트롤 구현 완료
+- `setSessionActivity()` → 알림 탭 시 앱으로 복귀
+- `onTaskRemoved()` → 재생 중이 아니면 서비스 자동 종료
+- Android 13+ `POST_NOTIFICATIONS` 권한 요청 (거부해도 재생은 정상 동작)
 
 #### `core-download`
 WorkManager 기반 에피소드 다운로드.

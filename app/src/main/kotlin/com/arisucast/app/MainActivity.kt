@@ -1,9 +1,13 @@
 package com.arisucast.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -15,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -32,14 +37,30 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or denied — Media3 will still work, just without notification */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestNotificationPermissionIfNeeded()
         enableEdgeToEdge()
         setContent {
             val mainViewModel: MainViewModel = hiltViewModel()
             val darkTheme by mainViewModel.darkTheme.collectAsStateWithLifecycle()
             ArisuCastTheme(darkTheme = darkTheme) {
                 ArisuCastApp(mainViewModel = mainViewModel)
+            }
+        }
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this, Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         }
     }
@@ -66,7 +87,7 @@ fun ArisuCastApp(
                     AnimatedMiniPlayer(
                         visible = hasCurrentEpisode,
                         episodeTitle = playbackState.currentEpisode?.title ?: "",
-                        podcastTitle = "",
+                        podcastTitle = playbackState.currentPodcastTitle ?: "",
                         imageUrl = playbackState.currentEpisode?.imageUrl ?: "",
                         isPlaying = playbackState.isPlaying,
                         progress = playbackState.progress,
