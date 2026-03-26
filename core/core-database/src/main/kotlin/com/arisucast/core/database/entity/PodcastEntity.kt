@@ -15,5 +15,6 @@ data class PodcastEntity(
     val category: String,
     val language: String,
     val lastUpdated: Long,
-    val isSubscribed: Boolean
+    val isSubscribed: Boolean,
+    val isFavorite: Boolean = false
 )

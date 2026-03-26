@@ -24,7 +24,9 @@ object DatabaseModule {
             context,
             ArisuCastDatabase::class.java,
             ArisuCastDatabase.DATABASE_NAME
-        ).build()
+        )
+            .addMigrations(ArisuCastDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides
     fun providePodcastDao(db: ArisuCastDatabase): PodcastDao = db.podcastDao()

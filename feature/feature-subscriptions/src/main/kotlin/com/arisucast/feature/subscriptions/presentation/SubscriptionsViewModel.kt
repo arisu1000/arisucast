@@ -2,9 +2,10 @@ package com.arisucast.feature.subscriptions.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.arisucast.core.common.model.Podcast
+import com.arisucast.core.common.model.PodcastSortOrder
 import com.arisucast.core.common.result.Result
 import com.arisucast.core.database.dao.PodcastDao
-import com.arisucast.core.database.entity.PodcastEntity
 import com.arisucast.core.database.mapper.toDomainModel
 import com.arisucast.feature.subscriptions.domain.SubscribeToFeedUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -12,7 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,10 +31,17 @@ class SubscriptionsViewModel @Inject constructor(
     private val subscribeToFeedUseCase: SubscribeToFeedUseCase
 ) : ViewModel() {
 
-    val uiState: StateFlow<SubscriptionsUiState> = podcastDao.getSubscribedPodcasts()
-        .map<List<PodcastEntity>, SubscriptionsUiState> { podcasts ->
-            SubscriptionsUiState.Success(podcasts.map { it.toDomainModel() })
-        }
+    private val _sortOrder = MutableStateFlow(PodcastSortOrder.NAME_ASC)
+
+    val uiState: StateFlow<SubscriptionsUiState> = combine(
+        podcastDao.getSubscribedPodcasts(),
+        _sortOrder
+    ) { podcasts, sortOrder ->
+        SubscriptionsUiState.Success(
+            subscriptions = podcasts.map { it.toDomainModel() }.sorted(sortOrder),
+            sortOrder = sortOrder
+        ) as SubscriptionsUiState
+    }
         .catch { e ->
             emit(SubscriptionsUiState.Error(e.message ?: "오류가 발생했습니다."))
         }
@@ -42,6 +50,24 @@ class SubscriptionsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = SubscriptionsUiState.Loading
         )
+
+    fun setSortOrder(order: PodcastSortOrder) {
+        _sortOrder.value = order
+    }
+
+    fun toggleFavorite(podcastId: String, currentValue: Boolean) {
+        viewModelScope.launch {
+            podcastDao.updateFavorite(podcastId, !currentValue)
+        }
+    }
+
+    private fun List<Podcast>.sorted(order: PodcastSortOrder): List<Podcast> = when (order) {
+        PodcastSortOrder.NAME_ASC -> sortedBy { it.title.lowercase() }
+        PodcastSortOrder.LAST_UPDATED -> sortedByDescending { it.lastUpdated }
+        PodcastSortOrder.FAVORITES_FIRST -> sortedWith(
+            compareByDescending<Podcast> { it.isFavorite }.thenBy { it.title.lowercase() }
+        )
+    }
 
     private val _subscribeState = MutableStateFlow(SubscribeState())
     val subscribeState: StateFlow<SubscribeState> = _subscribeState

@@ -9,9 +9,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DownloadDone
-import androidx.compose.material.icons.filled.Downloading
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -107,9 +107,9 @@ fun EpisodeItem(
         IconButton(onClick = onDownloadClick) {
             Icon(
                 imageVector = when {
-                    isDownloaded -> Icons.Default.DownloadDone
-                    isDownloading -> Icons.Default.Downloading
-                    else -> Icons.Default.Download
+                    isDownloaded -> Icons.Default.CloudDone
+                    isDownloading -> Icons.Default.CloudSync
+                    else -> Icons.Default.CloudDownload
                 },
                 contentDescription = "Download",
                 tint = if (isDownloaded) MaterialTheme.colorScheme.primary

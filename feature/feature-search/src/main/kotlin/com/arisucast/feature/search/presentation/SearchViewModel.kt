@@ -164,6 +164,7 @@ class SearchViewModel @Inject constructor(
                         category = dto.genre,
                         language = "",
                         isSubscribed = false,
+                        isFavorite = false,
                         lastUpdated = Instant.EPOCH
                     )
                 }

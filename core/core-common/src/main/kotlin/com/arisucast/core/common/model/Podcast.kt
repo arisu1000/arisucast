@@ -13,5 +13,6 @@ data class Podcast(
     val category: String,
     val language: String,
     val lastUpdated: Instant,
-    val isSubscribed: Boolean
+    val isSubscribed: Boolean,
+    val isFavorite: Boolean
 )

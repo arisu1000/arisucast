@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -19,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.arisucast.core.common.model.PodcastSortOrder
 import com.arisucast.core.ui.component.ErrorMessage
 import com.arisucast.core.ui.component.LoadingIndicator
 import com.arisucast.core.ui.component.PodcastCard
@@ -54,15 +56,36 @@ fun HomeScreen(
                         item {
                             LazyRow(
                                 contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 4.dp)
+                            ) {
+                                items(PodcastSortOrder.entries) { order ->
+                                    FilterChip(
+                                        selected = state.sortOrder == order,
+                                        onClick = { viewModel.setSortOrder(order) },
+                                        label = { Text(order.label) }
+                                    )
+                                }
+                            }
+                        }
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                items(state.subscriptions) { podcast ->
+                                items(state.subscriptions, key = { it.id }) { podcast ->
                                     PodcastCard(
                                         title = podcast.title,
                                         author = podcast.author,
                                         imageUrl = podcast.imageUrl,
-                                        onClick = { onPodcastClick(podcast.id) }
+                                        onClick = { onPodcastClick(podcast.id) },
+                                        isFavorite = podcast.isFavorite,
+                                        onFavoriteToggle = {
+                                            viewModel.toggleFavorite(podcast.id, podcast.isFavorite)
+                                        }
                                     )
                                 }
                             }

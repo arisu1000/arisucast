@@ -14,8 +14,8 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
 ## 프로젝트 구조
 
 - `app/` — 진입점, Navigation, `RefreshFeedsWorker`
-- `core/core-common/` — 도메인 모델(`Podcast`, `Episode`, `PlaybackState`), `Result<T>`, `sha256()`
-- `core/core-database/` — Room DB, DAOs (PodcastDao, EpisodeDao, SubscriptionDao)
+- `core/core-common/` — 도메인 모델(`Podcast`, `Episode`, `PlaybackState`, `PodcastSortOrder`), `Result<T>`, `sha256()`
+- `core/core-database/` — Room DB v2, DAOs (PodcastDao, EpisodeDao, SubscriptionDao)
 - `core/core-network/` — `RssParser` (Rome+iTunes), `ItunesSearchApi` (Retrofit)
 - `core/core-media/` — `PlaybackRepository` (@Singleton), `PlaybackService` (MediaSessionService)
 - `core/core-download/` — `EpisodeDownloadWorker` (HiltWorker), `DownloadManager`
@@ -58,6 +58,28 @@ suspend fun insertAll(episodes: List<EpisodeEntity>)
 // REPLACE 사용 금지 (재생 위치가 초기화됨)
 ```
 
+### PlaybackRepository 재생 완료 처리
+- `STATE_ENDED` 발생 시 DB의 `playbackPositionMs`를 0으로 초기화
+  - 이유: 마지막 위치(= duration)가 그대로 저장되면 다음 재생 시 `seekTo(duration)` → 즉시 ENDED 반복
+- `onPlayerError` 에서 `player.stop()` 호출 → IDLE 상태로 복구
+- `playEpisode()` 진입 시 `player.stop()` 선행 → ENDED/에러 상태 클리어 후 새 미디어 설정
+
+### ExoPlayer 버퍼 설정 (MediaModule)
+```kotlin
+DefaultLoadControl.Builder()
+    .setBufferDurationsMs(50_000, 50_000, 500, 1_000)
+    //                              ^bufferForPlaybackMs: 기본 2500 → 500ms
+    //                                       ^rebuffer: 기본 5000 → 1000ms
+```
+팟캐스트 오디오는 저비트레이트이므로 500ms 버퍼로 충분 — 재생 시작 딜레이 ~2초 단축
+
+### 팟캐스트 정렬 / 즐겨찾기
+- `PodcastSortOrder` enum: `NAME_ASC` / `LAST_UPDATED` / `FAVORITES_FIRST` (core-common)
+- `PodcastEntity` / `Podcast`에 `isFavorite: Boolean` 추가 → Room DB 버전 2
+- `PodcastDao.updateFavorite(id, favorite)` 쿼리 추가
+- 정렬 로직은 ViewModel에서 인메모리 처리 (목록이 작아 SQL 정렬 불필요)
+- `PodcastCard`에 `isFavorite` / `onFavoriteToggle` optional 파라미터 추가
+
 ## 의존성 규칙
 
 ```
@@ -82,6 +104,20 @@ core-network → core-database (금지 — 이 때문에 RefreshFeedsWorker는 a
 
 - **consumer-rules.pro**: 모든 library 모듈에 빈 파일 필요 (없으면 빌드 경고)
 
+- **Room 마이그레이션**: 컬럼 추가 시 반드시 `Migration` 객체 작성 후 `DatabaseModule`에 `.addMigrations(...)` 등록
+  ```kotlin
+  // ArisuCastDatabase.kt
+  val MIGRATION_1_2 = object : Migration(1, 2) {
+      override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL("ALTER TABLE podcasts ADD COLUMN isFavorite INTEGER NOT NULL DEFAULT 0")
+      }
+  }
+  // DatabaseModule.kt
+  Room.databaseBuilder(...).addMigrations(ArisuCastDatabase.MIGRATION_1_2).build()
+  ```
+
+- **앱 아이콘**: `res/drawable/ic_launcher_background.xml` (그라데이션) + `res/drawable/ic_launcher_foreground.xml` (헤드폰+음파 벡터). `mipmap-anydpi-v26/`이 Android 8+ 어댑티브 아이콘의 기본 위치. `<monochrome>` 레이어는 Android 13+ 다이나믹 테마 대응.
+
 ## 버전 정보 (gradle/libs.versions.toml)
 
 | 항목 | 버전 |
@@ -91,6 +127,6 @@ core-network → core-database (금지 — 이 때문에 RefreshFeedsWorker는 a
 | Kotlin | 2.1.0 |
 | AGP | 8.8.0 |
 | Hilt | 2.54 |
-| Room | 2.7.0 |
+| Room | 2.7.0 (DB schema v2) |
 | Media3 | 1.5.1 |
 | Compose BOM | 2025.02.00 |

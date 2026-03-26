@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.arisucast.core.common.model.Episode
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +50,16 @@ class PlaybackRepository @Inject constructor(
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) {
+                    // 재생 완료 시 DB 위치를 0으로 초기화 → 다음 재생 시 처음부터 시작
+                    player.currentMediaItem?.mediaId?.let { episodeId ->
+                        scope.launch {
+                            withContext(Dispatchers.IO) {
+                                episodeDao.updatePlaybackPosition(episodeId, 0L)
+                            }
+                        }
+                    }
+                }
                 _state.update {
                     it.copy(
                         playerState = when (playbackState) {
@@ -60,6 +72,12 @@ class PlaybackRepository @Inject constructor(
                         durationMs = player.duration.takeIf { d -> d > 0 } ?: 0L
                     )
                 }
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                // 에러 상태를 IDLE로 전환하여 다음 playEpisode 호출이 정상 작동하도록 함
+                player.stop()
+                _state.update { it.copy(playerState = PlayerState.IDLE, isPlaying = false) }
             }
 
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -105,6 +123,8 @@ class PlaybackRepository @Inject constructor(
             )
         }
 
+        // ENDED/에러 상태를 클리어하고 새 미디어 아이템 준비
+        player.stop()
         player.setMediaItem(mediaItem)
         player.prepare()
         if (episode.playbackPositionMs > 0) player.seekTo(episode.playbackPositionMs)

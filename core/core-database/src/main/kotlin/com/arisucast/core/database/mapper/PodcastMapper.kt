@@ -15,7 +15,8 @@ fun PodcastEntity.toDomainModel(): Podcast = Podcast(
     category = category,
     language = language,
     lastUpdated = Instant.ofEpochMilli(lastUpdated),
-    isSubscribed = isSubscribed
+    isSubscribed = isSubscribed,
+    isFavorite = isFavorite
 )
 
 fun Podcast.toEntity(): PodcastEntity = PodcastEntity(
@@ -29,5 +30,6 @@ fun Podcast.toEntity(): PodcastEntity = PodcastEntity(
     category = category,
     language = language,
     lastUpdated = lastUpdated.toEpochMilli(),
-    isSubscribed = isSubscribed
+    isSubscribed = isSubscribed,
+    isFavorite = isFavorite
 )

@@ -32,6 +32,9 @@ interface PodcastDao {
     @Query("UPDATE podcasts SET isSubscribed = :subscribed WHERE id = :id")
     suspend fun updateSubscriptionStatus(id: String, subscribed: Boolean)
 
+    @Query("UPDATE podcasts SET isFavorite = :favorite WHERE id = :id")
+    suspend fun updateFavorite(id: String, favorite: Boolean)
+
     @Query("DELETE FROM podcasts WHERE id = :id AND isSubscribed = 0")
     suspend fun deleteIfUnsubscribed(id: String)
 }

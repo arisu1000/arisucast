@@ -11,13 +11,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBackIosNew
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Forward30
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.NightlightRound
+import androidx.compose.material.icons.filled.PauseCircle
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.Timer
-import androidx.compose.material.icons.filled.TimerOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -60,7 +60,7 @@ fun PlayerScreen(
                 title = { Text("재생 중") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "뒤로")
+                        Icon(Icons.Default.ArrowBackIosNew, contentDescription = "뒤로")
                     }
                 }
             )
@@ -150,13 +150,14 @@ fun PlayerScreen(
 
                         IconButton(
                             onClick = viewModel::togglePlayPause,
-                            modifier = Modifier.size(64.dp)
+                            modifier = Modifier.size(72.dp)
                         ) {
                             Icon(
-                                imageVector = if (state.isPlaying) Icons.Default.Pause
-                                              else Icons.Default.PlayArrow,
+                                imageVector = if (state.isPlaying) Icons.Default.PauseCircle
+                                              else Icons.Default.PlayCircle,
                                 contentDescription = if (state.isPlaying) "일시정지" else "재생",
-                                modifier = Modifier.size(48.dp)
+                                modifier = Modifier.size(64.dp),
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -200,8 +201,8 @@ fun PlayerScreen(
                     ) {
                         IconButton(onClick = { showSleepTimerMenu = true }) {
                             Icon(
-                                imageVector = if (state.sleepTimerActive) Icons.Default.TimerOff
-                                              else Icons.Default.Timer,
+                                imageVector = if (state.sleepTimerActive) Icons.Default.NightlightRound
+                                              else Icons.Default.Bedtime,
                                 contentDescription = "슬립 타이머",
                                 tint = if (state.sleepTimerActive) MaterialTheme.colorScheme.primary
                                        else MaterialTheme.colorScheme.onSurfaceVariant
