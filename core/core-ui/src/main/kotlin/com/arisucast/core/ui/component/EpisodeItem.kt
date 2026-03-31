@@ -34,6 +34,7 @@ fun EpisodeItem(
     podcastTitle: String,
     imageUrl: String,
     durationText: String,
+    publishedDate: String,
     playbackProgress: Float,
     isDownloaded: Boolean,
     isDownloading: Boolean,
@@ -80,7 +81,7 @@ fun EpisodeItem(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = durationText,
+                text = "$publishedDate · $durationText",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

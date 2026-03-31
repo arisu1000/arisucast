@@ -97,6 +97,19 @@ class PlaybackRepository @Inject constructor(
     }
 
     fun playEpisode(episode: Episode, podcastTitle: String) {
+        // 에피소드 전환 전 position 업데이트 루프를 즉시 중단하고 현재 위치를 저장한다.
+        // 루프가 새 에피소드 ID에 이전 에피소드의 위치를 덮어쓰는 race condition을 방지하기 위함.
+        stopPositionUpdates()
+        val prevEpisodeId = player.currentMediaItem?.mediaId
+        val prevPosition = player.currentPosition
+        if (!prevEpisodeId.isNullOrBlank() && prevEpisodeId != episode.id) {
+            scope.launch {
+                withContext(Dispatchers.IO) {
+                    episodeDao.updatePlaybackPosition(prevEpisodeId, prevPosition)
+                }
+            }
+        }
+
         // Start PlaybackService so the system shows a media notification
         val serviceIntent = Intent(context, PlaybackService::class.java)
         ContextCompat.startForegroundService(context, serviceIntent)
@@ -116,7 +129,7 @@ class PlaybackRepository @Inject constructor(
             )
             .build()
 
-        _state.update { 
+        _state.update {
             it.copy(
                 currentEpisode = episode,
                 currentPodcastTitle = podcastTitle
@@ -127,7 +140,13 @@ class PlaybackRepository @Inject constructor(
         player.stop()
         player.setMediaItem(mediaItem)
         player.prepare()
-        if (episode.playbackPositionMs > 0) player.seekTo(episode.playbackPositionMs)
+        // 저장된 위치가 에피소드 총 길이를 초과하지 않는 경우에만 이어서 재생
+        // (DB 위치 오염 방어: 이어 듣기 위치가 실제 길이보다 길면 STATE_ENDED 즉시 발생)
+        val savedPos = episode.playbackPositionMs
+        val durationMs = episode.durationSeconds.toLong() * 1000L
+        if (savedPos > 0 && (durationMs <= 0L || savedPos < durationMs)) {
+            player.seekTo(savedPos)
+        }
         player.play()
     }
 

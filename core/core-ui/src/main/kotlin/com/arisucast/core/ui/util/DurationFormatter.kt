@@ -1,5 +1,14 @@
 package com.arisucast.core.ui.util
 
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private val DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy.MM.dd")
+
+fun formatPublishedDate(instant: Instant): String =
+    DATE_FORMATTER.format(instant.atZone(ZoneId.systemDefault()))
+
 fun formatDuration(seconds: Int): String {
     val hours = seconds / 3600
     val minutes = (seconds % 3600) / 60

@@ -23,6 +23,7 @@ import com.arisucast.core.ui.component.EpisodeItem
 import com.arisucast.core.ui.component.ErrorMessage
 import com.arisucast.core.ui.component.LoadingIndicator
 import com.arisucast.core.ui.util.formatDuration
+import com.arisucast.core.ui.util.formatPublishedDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +63,7 @@ fun EpisodeListScreen(
                             podcastTitle = state.podcastTitle,
                             imageUrl = episode.imageUrl,
                             durationText = formatDuration(episode.durationSeconds),
+                            publishedDate = formatPublishedDate(episode.publishedAt),
                             playbackProgress = if (episode.durationSeconds > 0) {
                                 (episode.playbackPositionMs / 1000f) / episode.durationSeconds
                             } else 0f,
