@@ -8,7 +8,8 @@ sealed class EpisodeListUiState {
         val podcastTitle: String,
         val episodes: List<Episode>,
         val currentEpisodeId: String? = null,
-        val isPlaying: Boolean = false
+        val isPlaying: Boolean = false,
+        val isRefreshing: Boolean = false
     ) : EpisodeListUiState()
     data class Error(val message: String) : EpisodeListUiState()
 }

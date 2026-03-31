@@ -34,6 +34,7 @@ dependencies {
     implementation(project(":core:core-database"))
     implementation(project(":core:core-media"))
     implementation(project(":core:core-download"))
+    implementation(project(":core:core-network"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

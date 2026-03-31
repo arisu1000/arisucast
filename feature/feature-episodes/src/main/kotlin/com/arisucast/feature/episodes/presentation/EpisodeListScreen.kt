@@ -10,6 +10,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -51,35 +52,39 @@ fun EpisodeListScreen(
             is EpisodeListUiState.Loading -> LoadingIndicator()
             is EpisodeListUiState.Error -> ErrorMessage(message = state.message)
             is EpisodeListUiState.Success -> {
-                LazyColumn(
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = viewModel::refresh,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(padding)
                 ) {
-                    items(state.episodes, key = { it.id }) { episode ->
-                        val isCurrentEpisode = episode.id == state.currentEpisodeId
-                        EpisodeItem(
-                            title = episode.title,
-                            podcastTitle = state.podcastTitle,
-                            imageUrl = episode.imageUrl,
-                            durationText = formatDuration(episode.durationSeconds),
-                            publishedDate = formatPublishedDate(episode.publishedAt),
-                            playbackProgress = if (episode.durationSeconds > 0) {
-                                (episode.playbackPositionMs / 1000f) / episode.durationSeconds
-                            } else 0f,
-                            isDownloaded = episode.downloadState is DownloadState.Downloaded,
-                            isDownloading = episode.downloadState is DownloadState.Downloading,
-                            downloadProgress = (episode.downloadState as? DownloadState.Downloading)
-                                ?.progressPercent?.toFloat()?.div(100f) ?: 0f,
-                            isCurrentlyPlaying = isCurrentEpisode && state.isPlaying,
-                            onPlayClick = {
-                                viewModel.playEpisode(episode)
-                                onPlayerClick()
-                            },
-                            onDownloadClick = { viewModel.toggleDownload(episode) },
-                            onClick = {}
-                        )
-                        HorizontalDivider()
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(state.episodes, key = { it.id }) { episode ->
+                            val isCurrentEpisode = episode.id == state.currentEpisodeId
+                            EpisodeItem(
+                                title = episode.title,
+                                podcastTitle = state.podcastTitle,
+                                imageUrl = episode.imageUrl,
+                                durationText = formatDuration(episode.durationSeconds),
+                                publishedDate = formatPublishedDate(episode.publishedAt),
+                                playbackProgress = if (episode.durationSeconds > 0) {
+                                    (episode.playbackPositionMs / 1000f) / episode.durationSeconds
+                                } else 0f,
+                                isDownloaded = episode.downloadState is DownloadState.Downloaded,
+                                isDownloading = episode.downloadState is DownloadState.Downloading,
+                                downloadProgress = (episode.downloadState as? DownloadState.Downloading)
+                                    ?.progressPercent?.toFloat()?.div(100f) ?: 0f,
+                                isCurrentlyPlaying = isCurrentEpisode && state.isPlaying,
+                                onPlayClick = {
+                                    viewModel.playEpisode(episode)
+                                    onPlayerClick()
+                                },
+                                onDownloadClick = { viewModel.toggleDownload(episode) },
+                                onClick = {}
+                            )
+                            HorizontalDivider()
+                        }
                     }
                 }
             }
