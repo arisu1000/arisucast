@@ -8,6 +8,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.arisucast.core.common.model.DownloadState
 import com.arisucast.core.common.model.Episode
 import com.arisucast.core.common.model.PlayerState
 import com.arisucast.core.common.model.PlaybackState
@@ -114,8 +115,7 @@ class PlaybackRepository @Inject constructor(
         val serviceIntent = Intent(context, PlaybackService::class.java)
         ContextCompat.startForegroundService(context, serviceIntent)
 
-        val audioUrl = (episode.downloadState as? com.arisucast.core.common.model.DownloadState.Downloaded)?.localFilePath
-            ?: episode.audioUrl
+        val audioUrl = resolveAudioUrl(episode)
 
         val mediaItem = MediaItem.Builder()
             .setMediaId(episode.id)
@@ -194,6 +194,11 @@ class PlaybackRepository @Inject constructor(
             _state.update { it.copy(sleepTimerEndMs = 0L) }
         }
     }
+
+    /** Returns the local file path if the episode has been downloaded, otherwise the remote URL. */
+    private fun resolveAudioUrl(episode: Episode): String =
+        (episode.downloadState as? DownloadState.Downloaded)?.localFilePath
+            ?: episode.audioUrl
 
     private fun startPositionUpdates() {
         positionSaveJob?.cancel()

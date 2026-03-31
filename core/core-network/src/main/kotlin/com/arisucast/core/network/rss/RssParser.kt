@@ -97,19 +97,32 @@ class RssParser @Inject constructor(
         )
     }
 
+    private fun parseDurationToSeconds(durationString: String): Int {
+        val parts = durationString.split(":")
+        return when (parts.size) {
+            3 -> {
+                val hours = parts[0].toIntOrNull() ?: 0
+                val minutes = parts[1].toIntOrNull() ?: 0
+                val seconds = parts[2].toIntOrNull() ?: 0
+                hours * 3600 + minutes * 60 + seconds
+            }
+            2 -> {
+                val minutes = parts[0].toIntOrNull() ?: 0
+                val seconds = parts[1].toIntOrNull() ?: 0
+                minutes * 60 + seconds
+            }
+            1 -> parts[0].toIntOrNull() ?: 0
+            else -> 0
+        }
+    }
+
     private fun SyndEntry.toParsedEpisode(fallbackImageUrl: String): ParsedEpisode? {
         val enclosure = enclosures.firstOrNull { it.type?.startsWith("audio") == true }
             ?: return null
 
         val itunesEntry = getModule(ITUNES_NS) as? EntryInformation
         val durationSeconds = itunesEntry?.duration?.let { d ->
-            val parts = d.toString().split(":")
-            when (parts.size) {
-                3 -> parts[0].toIntOrNull()?.times(3600)?.plus(parts[1].toIntOrNull()?.times(60) ?: 0)?.plus(parts[2].toIntOrNull() ?: 0) ?: 0
-                2 -> parts[0].toIntOrNull()?.times(60)?.plus(parts[1].toIntOrNull() ?: 0) ?: 0
-                1 -> parts[0].toIntOrNull() ?: 0
-                else -> 0
-            }
+            parseDurationToSeconds(d.toString())
         } ?: 0
 
         val episodeImageUrl = itunesEntry?.image?.toString()

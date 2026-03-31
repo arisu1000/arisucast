@@ -2,8 +2,8 @@ package com.arisucast.feature.home.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.arisucast.core.common.model.Podcast
 import com.arisucast.core.common.model.PodcastSortOrder
+import com.arisucast.core.common.model.sortedByOrder
 import com.arisucast.core.database.dao.EpisodeDao
 import com.arisucast.core.database.dao.PodcastDao
 import com.arisucast.core.database.mapper.toDomainModel
@@ -31,7 +31,7 @@ class HomeViewModel @Inject constructor(
         _sortOrder
     ) { podcasts, episodes, sortOrder ->
         HomeUiState.Success(
-            subscriptions = podcasts.map { it.toDomainModel() }.sorted(sortOrder),
+            subscriptions = podcasts.map { it.toDomainModel() }.sortedByOrder(sortOrder),
             recentEpisodes = episodes.map { it.toDomainModel() },
             sortOrder = sortOrder
         ) as HomeUiState
@@ -55,13 +55,5 @@ class HomeViewModel @Inject constructor(
 
     fun refresh() {
         // Feed refresh will be triggered via WorkManager
-    }
-
-    private fun List<Podcast>.sorted(order: PodcastSortOrder): List<Podcast> = when (order) {
-        PodcastSortOrder.NAME_ASC -> sortedBy { it.title.lowercase() }
-        PodcastSortOrder.LAST_UPDATED -> sortedByDescending { it.lastUpdated }
-        PodcastSortOrder.FAVORITES_FIRST -> sortedWith(
-            compareByDescending<Podcast> { it.isFavorite }.thenBy { it.title.lowercase() }
-        )
     }
 }
