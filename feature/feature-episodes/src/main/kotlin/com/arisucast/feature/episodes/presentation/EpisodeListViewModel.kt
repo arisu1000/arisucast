@@ -16,11 +16,13 @@ import com.arisucast.core.download.manager.DownloadManager
 import com.arisucast.core.media.PlaybackRepository
 import com.arisucast.core.network.rss.RssParser
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,6 +43,10 @@ class EpisodeListViewModel @Inject constructor(
     private val podcastId: String = checkNotNull(savedStateHandle["podcastId"])
 
     private val _isRefreshing = MutableStateFlow(false)
+
+    // 갱신 실패 시 Snackbar 표시용 단발성 이벤트
+    private val _refreshErrorChannel = Channel<String>(Channel.BUFFERED)
+    val refreshErrors = _refreshErrorChannel.receiveAsFlow()
 
     val uiState: StateFlow<EpisodeListUiState> = combine(
         podcastDao.getSubscribedPodcasts(),
@@ -87,6 +93,7 @@ class EpisodeListViewModel @Inject constructor(
                             existing.copy(
                                 title = feed.title,
                                 author = feed.author,
+                                description = feed.description,
                                 imageUrl = feed.imageUrl.ifBlank { existing.imageUrl },
                                 lastUpdated = now.toEpochMilli()
                             )
@@ -117,6 +124,8 @@ class EpisodeListViewModel @Inject constructor(
                     }
                     episodeDao.insertAll(episodes)
                     subscriptionDao.updateLastRefreshed(podcastId, now.toEpochMilli())
+                } else if (result is Result.Error) {
+                    _refreshErrorChannel.trySend("피드 갱신에 실패했습니다.")
                 }
             } finally {
                 _isRefreshing.update { false }

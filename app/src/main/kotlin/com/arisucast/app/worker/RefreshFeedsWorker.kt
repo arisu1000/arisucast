@@ -78,7 +78,9 @@ class RefreshFeedsWorker @AssistedInject constructor(
             }
         }
 
-        return if (hasError) Result.retry() else Result.success()
+        // 일부 피드 실패 시에도 retry하지 않음: retry는 지수 백오프로 모든 피드를 재요청하므로
+        // 이미 성공한 피드까지 불필요하게 재처리됨. 실패한 피드는 다음 주기(6시간)에 재시도.
+        return Result.success()
     }
 
     companion object {

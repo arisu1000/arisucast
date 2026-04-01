@@ -53,7 +53,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         mediaSession?.run {
-            player.release()
+            // player는 @Singleton이므로 Service가 release하지 않음
+            // release() 하면 PlaybackRepository가 해제된 ExoPlayer를 참조하여 크래시 발생
             release()
             mediaSession = null
         }

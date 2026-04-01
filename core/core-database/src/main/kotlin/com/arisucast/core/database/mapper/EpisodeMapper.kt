@@ -29,10 +29,15 @@ private fun EpisodeEntity.toDownloadState(): DownloadState = when (downloadStatu
         progressPercent = 0,
         workerId = downloadWorkerId?.let { UUID.fromString(it) } ?: UUID.randomUUID()
     )
-    "DONE" -> DownloadState.Downloaded(
-        localFilePath = localFilePath ?: "",
-        downloadedAt = Instant.ofEpochMilli(downloadedAt ?: 0L)
-    )
+    "DONE" -> if (!localFilePath.isNullOrBlank()) {
+        DownloadState.Downloaded(
+            localFilePath = localFilePath,
+            downloadedAt = Instant.ofEpochMilli(downloadedAt ?: 0L)
+        )
+    } else {
+        // localFilePath 누락 시 빈 문자열로 재생 시도하면 ExoPlayer 오류 발생 → NotDownloaded 폴백
+        DownloadState.NotDownloaded
+    }
     "FAILED" -> DownloadState.Failed("Download failed")
     else -> DownloadState.NotDownloaded
 }
