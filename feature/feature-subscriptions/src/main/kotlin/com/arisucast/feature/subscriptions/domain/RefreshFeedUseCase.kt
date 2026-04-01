@@ -28,8 +28,10 @@ class RefreshFeedUseCase @Inject constructor(
                 val now = Instant.now()
 
                 // Update podcast metadata
+                // upsert(REPLACE) 대신 update 사용: REPLACE는 행을 DELETE 후 INSERT하므로
+                // ForeignKey(onDelete=CASCADE)에 의해 에피소드 전체가 삭제됨
                 podcastDao.getById(podcastId)?.let { existing ->
-                    podcastDao.upsert(
+                    podcastDao.update(
                         existing.copy(
                             title = feed.title,
                             author = feed.author,
