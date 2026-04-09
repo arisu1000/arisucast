@@ -3,11 +3,13 @@ package com.arisucast.core.media
 import android.content.Context
 import androidx.media3.exoplayer.ExoPlayer
 import com.arisucast.core.database.dao.EpisodeDao
+import com.arisucast.core.datastore.UserPreferencesDataStore
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -26,12 +28,15 @@ class PlaybackRepositoryTest {
     private val context: Context = mockk(relaxed = true)
     private val player: ExoPlayer = mockk(relaxed = true)
     private val episodeDao: EpisodeDao = mockk(relaxed = true)
+    private val dataStore: UserPreferencesDataStore = mockk(relaxed = true)
     private lateinit var repository: PlaybackRepository
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        repository = PlaybackRepository(context, player, episodeDao)
+        // restoreLastPlayingEpisode()가 init에서 호출되므로 null을 반환하도록 stub
+        every { dataStore.lastPlayingEpisodeId } returns flowOf(null)
+        repository = PlaybackRepository(context, player, episodeDao, dataStore)
     }
 
 

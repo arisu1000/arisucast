@@ -13,6 +13,8 @@ import com.arisucast.core.common.model.Episode
 import com.arisucast.core.common.model.PlayerState
 import com.arisucast.core.common.model.PlaybackState
 import com.arisucast.core.database.dao.EpisodeDao
+import com.arisucast.core.database.mapper.toDomainModel
+import com.arisucast.core.datastore.UserPreferencesDataStore
 import com.arisucast.core.media.service.PlaybackService
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -23,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -34,7 +37,8 @@ import javax.inject.Singleton
 class PlaybackRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val player: ExoPlayer,
-    private val episodeDao: EpisodeDao
+    private val episodeDao: EpisodeDao,
+    private val dataStore: UserPreferencesDataStore
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var positionSaveJob: Job? = null
@@ -44,6 +48,7 @@ class PlaybackRepository @Inject constructor(
     val state: StateFlow<PlaybackState> = _state.asStateFlow()
 
     init {
+        restoreLastPlayingEpisode()
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 _state.update { it.copy(isPlaying = isPlaying) }
@@ -53,10 +58,12 @@ class PlaybackRepository @Inject constructor(
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) {
                     // 재생 완료 시 DB 위치를 0으로 초기화 → 다음 재생 시 처음부터 시작
+                    // 마지막 재생 에피소드도 초기화 → 완료된 에피소드는 앱 재시작 후 복구하지 않음
                     player.currentMediaItem?.mediaId?.let { episodeId ->
                         scope.launch {
                             withContext(Dispatchers.IO) {
                                 episodeDao.updatePlaybackPosition(episodeId, 0L)
+                                dataStore.clearLastPlayingEpisode()
                             }
                         }
                     }
@@ -111,10 +118,26 @@ class PlaybackRepository @Inject constructor(
             }
         }
 
+        // 앱 재시작 후 복구를 위해 마지막 재생 에피소드를 DataStore에 저장
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                dataStore.setLastPlayingEpisode(episode.id, podcastTitle)
+            }
+        }
+
         // Start PlaybackService so the system shows a media notification
         val serviceIntent = Intent(context, PlaybackService::class.java)
         ContextCompat.startForegroundService(context, serviceIntent)
 
+        loadMediaItem(episode, podcastTitle)
+        player.play()
+    }
+
+    /**
+     * MediaItem을 ExoPlayer에 로드하고 저장된 위치로 seek한다.
+     * player.play()는 호출하지 않으므로 복구(restore) 시에도 재사용 가능하다.
+     */
+    private fun loadMediaItem(episode: Episode, podcastTitle: String) {
         val audioUrl = resolveAudioUrl(episode)
 
         val mediaItem = MediaItem.Builder()
@@ -139,7 +162,6 @@ class PlaybackRepository @Inject constructor(
         // ENDED/에러 상태를 클리어하고 새 미디어 아이템 준비
         player.stop()
         player.setMediaItem(mediaItem)
-        player.prepare()
         // 저장된 위치가 에피소드 총 길이를 초과하지 않는 경우에만 이어서 재생
         // (DB 위치 오염 방어: 이어 듣기 위치가 실제 길이보다 길면 STATE_ENDED 즉시 발생)
         val savedPos = episode.playbackPositionMs
@@ -147,7 +169,26 @@ class PlaybackRepository @Inject constructor(
         if (savedPos > 0 && (durationMs <= 0L || savedPos < durationMs)) {
             player.seekTo(savedPos)
         }
-        player.play()
+        player.prepare()
+    }
+
+    /**
+     * 앱 시작 시 DataStore에서 마지막 재생 에피소드 ID를 읽어 UI에 복구한다.
+     * ExoPlayer에 미디어를 로드하되 자동 재생하지 않으므로, 사용자가 Play를 눌러야 재생된다.
+     */
+    private fun restoreLastPlayingEpisode() {
+        scope.launch {
+            val episodeId = withContext(Dispatchers.IO) {
+                dataStore.lastPlayingEpisodeId.first()
+            } ?: return@launch
+            val podcastTitle = withContext(Dispatchers.IO) {
+                dataStore.lastPlayingPodcastTitle.first()
+            } ?: ""
+            val entity = withContext(Dispatchers.IO) {
+                episodeDao.getById(episodeId)
+            } ?: return@launch
+            loadMediaItem(entity.toDomainModel(), podcastTitle)
+        }
     }
 
     fun playPause() {
