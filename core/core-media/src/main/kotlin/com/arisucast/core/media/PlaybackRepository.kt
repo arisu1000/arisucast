@@ -192,7 +192,15 @@ class PlaybackRepository @Inject constructor(
     }
 
     fun playPause() {
-        if (player.isPlaying) player.pause() else player.play()
+        if (player.isPlaying) {
+            player.pause()
+        } else {
+            // 앱 재시작 후 복구된 상태에서 최초 재생 시 서비스가 아직 실행 중이 아닐 수 있으므로
+            // play() 전에 항상 서비스를 시작하여 미디어 알림이 표시되도록 한다.
+            val serviceIntent = Intent(context, PlaybackService::class.java)
+            ContextCompat.startForegroundService(context, serviceIntent)
+            player.play()
+        }
     }
 
     fun seekTo(positionMs: Long) {
